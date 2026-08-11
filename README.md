@@ -1,16 +1,18 @@
-## Hi there 👋
+## Hi, I'm TouchEVA 👋
 
-<!--
-**toucheva/toucheva** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Tech writer and founder of [hubkub.com](https://hubkub.com) — covering software reviews, download guides, AI tools, and cybersecurity.
 
-Here are some ideas to get you started:
+### 🔗 Links
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+- 🌐 [hubkub.com](https://hubkub.com)
+- 📝 [Latest Tech News](https://hubkub.com/tech-news/)
+- 💾 [Software Downloads](https://hubkub.com/downloads/)
+- 🔒 [Security Guides](https://hubkub.com/security/)
+- 🤖 [AI Tools](https://hubkub.com/ai/)
+
+### 🛠️ Focus Areas
+
+- Windows software and utilities
+- Open-source tools
+- AI tools and practical applications
+- Cybersecurity and privacy
