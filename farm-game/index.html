@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="เกมปลูกผักเล่นในเบราว์เซอร์ ออฟไลน์ 100% — ฟาร์มมินิ v4.0 เพลงและเอฟเฟกต์ใหม่">
+<title>🥕 ฟาร์มมินิ v4.0 — เกมปลูกผักในเบราว์เซอร์</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥕</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="time-day">
+  <div id="celestial">☀️</div>
+  <div id="clouds"></div>
+  <div id="weather-layer"></div>
+  <div id="tooltip"></div>
+  <div id="tool-cursor" aria-hidden="true"><span id="tool-cursor-icon">🪓</span><small id="tool-cursor-name">ถาก/ไถ</small></div>
+
+  <div id="app">
+    <!-- ฉากหลังฟาร์ม: โรงนา ยุ้งข้าว รั้ว ต้นไม้ -->
+    <div id="scenery"></div>
+
+    <header id="topbar" class="wood-panel">
+      <div class="stat">🥕 <b>ฟาร์มมินิ</b> <span class="version-badge">v4.0</span></div>
+      <div class="stat">🪙 <b id="ui-money">0</b></div>
+      <div class="stat">📅 <span id="ui-day">วันที่ 1</span></div>
+      <div class="stat"><span id="ui-season">☀️ ฤดูร้อน</span></div>
+      <div class="stat" title="พยากรณ์อากาศพรุ่งนี้">⛅ พรุ่งนี้: <span id="ui-forecast">…</span></div>
+      <div class="stat"><span id="ui-weather">☀️ แดดออก</span></div>
+      <div class="stat">⏰ <span id="ui-clock">06:00</span></div>
+      <div class="stat lv">Lv.<b id="ui-level">1</b>
+        <div class="xpbar"><div id="ui-xp-fill"></div></div>
+        <span class="xptext" id="ui-xptext">0/60</span>
+      </div>
+      <div class="stat" id="ui-title"></div>
+      <div class="stat achv-badge" id="ui-achv-badge" title="ตราสะสม">🏆 0/18</div>
+      <button id="btn-music" title="เปิด/ปิดเพลง">🎵</button>
+      <button id="btn-sound" title="เปิด/ปิดเสียงเอฟเฟกต์">🔊</button>
+      <button id="btn-settings" title="ตั้งค่า">⚙️</button>
+    </header>
+
+    <div id="main">
+      <nav id="toolbar" class="wood-panel">
+        <button class="tool active" data-tool="till" title="ถากหญ้า/ไถดิน (1)">🪓 ถาก/ไถ</button>
+        <button class="tool" data-tool="plant" title="หว่านเมล็ด (2)">🌱 หว่านเมล็ด</button>
+        <button class="tool" data-tool="water" title="รดน้ำ (3)">💧 รดน้ำ <span class="cnt" id="ui-can">🪣8/8</span></button>
+        <button class="tool" data-tool="harvest" title="เก็บเกี่ยว (4)">🧺 เก็บเกี่ยว</button>
+        <button class="tool" data-tool="fert" title="ใส่ปุ๋ย (5)">💩 ปุ๋ย <span class="cnt" id="ui-fert">×0</span></button>
+        <button class="tool" data-tool="fill" title="เติมน้ำกระป๋อง (6)">🪣 เติมน้ำ</button>
+        <span id="seed-pick" title="เลือกเมล็ดที่จะหว่าน"></span>
+        <span class="spacer"></span>
+        <button id="btn-coop">🛖 โรงนา</button>
+        <button id="btn-shop">🏪 ร้าน</button>
+        <button id="btn-inventory">📦 คลัง/ขาย</button>
+        <button id="btn-quest">📜 เควส</button>
+        <button id="btn-achv">🏆 ตรา</button>
+        <button id="btn-news">📰 ข่าว</button>
+        <button id="btn-help">❓</button>
+        <button id="btn-newgame">🗑️</button>
+        <span id="debug-tools" hidden>
+          <button id="btn-d-hour">+1 ชม.</button>
+          <button id="btn-d-day">+1 วัน</button>
+          <button id="btn-d-money">+1,000</button>
+        </span>
+      </nav>
+
+      <div id="content-row">
+        <aside id="sidebar">
+          <div class="panel wood-panel">
+            <h3>📜 เควสปัจจุบัน</h3>
+            <div id="ui-current-quest">—</div>
+          </div>
+          <div class="panel wood-panel">
+            <h3>📦 คลัง</h3>
+            <div id="ui-inv-mini">ยังไม่มีของ</div>
+          </div>
+          <div class="panel wood-panel">
+            <h3>🐔 คอกไก่</h3>
+            <div id="ui-coop-mini">ยังไม่มีไก่ — กดปุ่ม "คอกไก่" เพื่อซื้อ 🐔</div>
+          </div>
+          <div class="panel wood-panel">
+            <h3>🛠️ อัปเกรด</h3>
+            <div id="ui-upgrades-mini">ยังไม่มี</div>
+          </div>
+        </aside>
+
+        <div id="farm-wrap" class="wood-panel">
+          <div id="plot-info"><span class="plot-info-icon">🌾</span><span id="plot-info-text">ชี้เมาส์บนแปลงเพื่อดูรายละเอียด</span></div>
+          <div id="grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer id="newsbar" class="wood-panel">📰 <span id="ui-news">ยินดีต้อนรับสู่ฟาร์มมินิ!</span></footer>
+  </div>
+
+  <div id="modal" class="hidden">
+    <div id="modal-box">
+      <button id="modal-close">✕</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/market.js"></script>
+  <script src="js/quests.js"></script>
+  <script src="js/animals.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
