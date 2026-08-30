@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ไร่ดีมีสุข Phase 0</title>
+<title>ไร่ดีมีสุข Merge</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%A5%AC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,55 +13,61 @@
 <body>
   <div id="app">
     <header class="topbar">
-      <div class="brand">ไร่ดีมีสุข <span>Phase 0</span></div>
+      <div class="brand">ไร่ดีมีสุข <span>Merge</span></div>
+
       <div class="stats">
-        <div class="stat"><span class="k">วัน</span><b id="stat-day">1</b></div>
-        <div class="stat"><span class="k">เงิน</span><b id="stat-money">0</b></div>
-        <div class="stat stamina">
-          <span class="k">พลังงาน</span>
-          <div class="bar"><i id="stamina-fill"></i></div>
-          <b id="stat-stamina">0</b>
+        <div class="stat simple">
+          <span class="k">เหรียญ</span><b id="stat-coins">0</b>
         </div>
-        <div class="stat combo" id="combo" hidden><span class="k">คอมโบ</span><b id="combo-val">×0</b></div>
+        <div class="stat">
+          <span class="k">ระดับ</span><b id="stat-level">1</b>
+          <div class="bar xp"><i id="xp-fill"></i></div>
+          <small id="stat-xp" class="sub">0/60</small>
+        </div>
+        <div class="stat">
+          <span class="k">พลังงาน</span><b id="stat-energy">30/30</b>
+          <div class="bar"><i id="energy-fill"></i></div>
+          <small id="energy-timer" class="sub">เต็ม</small>
+        </div>
       </div>
+
       <div class="topactions">
+        <button id="btn-energy" class="ghost">เติมพลังงาน</button>
         <button id="btn-mute" class="ghost" title="เปิด/ปิดเสียง">🔊</button>
-        <button id="btn-reset" class="ghost" title="เริ่มใหม่">เริ่มใหม่</button>
-        <button id="btn-sleep" class="primary">เข้านอน</button>
+        <button id="btn-reset" class="ghost">เริ่มใหม่</button>
       </div>
     </header>
 
     <main class="layout">
       <section class="stage">
-        <canvas id="board" width="508" height="508" aria-label="แปลงปลูก 8 คูณ 8"></canvas>
-        <div class="tools" id="tools" role="toolbar" aria-label="เครื่องมือ"></div>
-        <p class="hint" id="hint">เลือกเครื่องมือแล้วคลิกที่แปลง · ลากค้างเพื่อทำงานต่อเนื่อง · กด 1–5 เพื่อสลับเครื่องมือ</p>
+        <canvas id="board" aria-label="กระดานรวมร่าง 8 คูณ 7"></canvas>
+        <p class="hint" id="hint"></p>
       </section>
 
       <aside class="side">
-        <div class="panel" id="panel-plot">
-          <h2>แปลงที่เลือก</h2>
-          <div id="plot-info" class="plotinfo">ชี้ที่แปลงเพื่อดูรายละเอียด</div>
-        </div>
-
         <div class="panel">
-          <h2>เมล็ดพันธุ์</h2>
-          <div id="seedlist" class="seedlist"></div>
+          <h2>คำสั่งซื้อ</h2>
+          <div id="orders" class="orders"></div>
         </div>
-
         <div class="panel">
-          <h2>ผลผลิตในคลัง</h2>
-          <div id="storage" class="storage">ยังไม่มีผลผลิต</div>
-          <button id="btn-sell" class="primary wide" disabled>ขายทั้งหมด</button>
+          <h2>สารานุกรม</h2>
+          <div id="codex" class="codex"></div>
+        </div>
+        <div class="panel howto">
+          <h2>วิธีเล่น</h2>
+          <ol>
+            <li><b>แตะแปลงผักหรือกองไม้</b> เพื่อปล่อยของออกมา</li>
+            <li><b>ลากของชนิดเดียวกัน</b> มาต่อกันให้ครบ 3 ชิ้น แล้วปล่อยทับ จะรวมเป็นขั้นถัดไป</li>
+            <li>ต่อกันครบ <b>5 ชิ้น</b> จะได้ของแถมอีกหนึ่งชิ้น</li>
+            <li><b>แตะวัชพืชหรือก้อนหิน</b> เพื่อถางด้วยพลังงาน ได้พื้นที่คืนพร้อมของ</li>
+            <li><b>แตะเหรียญ</b> เพื่อเก็บเป็นเงิน</li>
+          </ol>
         </div>
       </aside>
     </main>
   </div>
 
-  <div class="overlay" id="overlay" hidden>
-    <div class="modal" id="modal"></div>
-  </div>
-
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

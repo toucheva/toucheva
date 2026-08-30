@@ -166,74 +166,65 @@ export class Audio {
     if (!this.ctx || this.muted) return;
 
     switch (name) {
-      case 'till': {
-        const { mul, index } = this.vary('till', 4);
-        this.noise({ bus: 'sfx', dur: 0.16, gain: 0.35, freq: (500 + index * 90) * mul });
-        this.tone({ bus: 'sfx', type: 'triangle', freq: 150 * mul, endFreq: 70, dur: 0.14, gain: 0.16 });
+      case 'pick': {
+        const { mul } = this.vary('pick', 3);
+        this.tone({ bus: 'ui', type: 'sine', freq: 540 * mul, endFreq: 700, dur: 0.06, gain: 0.07 });
         break;
       }
-      case 'water': {
-        const { mul, index } = this.vary('water', 4);
-        this.noise({ bus: 'sfx', dur: 0.3, gain: 0.16, freq: (1900 + index * 220) * mul, type: 'bandpass' });
+      case 'place': {
+        const { mul } = this.vary('place', 4);
+        this.tone({ bus: 'sfx', type: 'sine', freq: 380 * mul, endFreq: 250, dur: 0.08, gain: 0.11 });
+        this.noise({ bus: 'sfx', dur: 0.05, gain: 0.1, freq: 900 * mul });
         break;
       }
-      case 'plant': {
-        const { mul } = this.vary('plant', 4);
-        this.tone({ bus: 'sfx', type: 'sine', freq: 480 * mul, endFreq: 760, dur: 0.13, gain: 0.16 });
-        this.noise({ bus: 'sfx', dur: 0.07, gain: 0.14, freq: 900 * mul });
+      case 'produce': {
+        const { mul } = this.vary('produce', 4);
+        this.tone({ bus: 'sfx', type: 'sine', freq: 460 * mul, endFreq: 760, dur: 0.12, gain: 0.14 });
+        this.noise({ bus: 'sfx', dur: 0.07, gain: 0.11, freq: 1500 * mul });
         break;
       }
-      case 'stake': {
-        const { mul } = this.vary('stake', 3);
-        this.tone({ bus: 'sfx', type: 'square', freq: 220 * mul, endFreq: 130, dur: 0.1, gain: 0.12, filter: 1400 });
-        this.noise({ bus: 'sfx', dur: 0.09, gain: 0.2, freq: 1200 * mul });
+      case 'clear': {
+        const { mul, index } = this.vary('clear', 4);
+        this.noise({ bus: 'sfx', dur: 0.26, gain: 0.34, freq: (620 + index * 110) * mul });
+        this.tone({ bus: 'sfx', type: 'triangle', freq: 150 * mul, endFreq: 66, dur: 0.22, gain: 0.15 });
         break;
       }
-      // เก็บเกี่ยวแยกตามตระกูลพืช — ใบ หัว ผล ฝัก เสียงต่างกันจริง
-      case 'harvest-leaf': {
-        const { mul } = this.vary('h-leaf', 4);
-        this.noise({ bus: 'sfx', dur: 0.13, gain: 0.3, freq: 2600 * mul, type: 'bandpass' });
+      // เสียงรวมร่างไล่สูงขึ้นตามขั้น ยิ่งขั้นสูงยิ่งฟังอิ่ม
+      case 'merge0':
+      case 'merge1':
+      case 'merge2':
+      case 'merge3':
+      case 'merge4': {
+        const tier = Number(name.slice(5));
+        const root = 392 * Math.pow(2, tier / 5);
+        [0, 4, 7].forEach((semi, i) => {
+          this.tone({
+            bus: 'sfx', type: 'sine',
+            freq: root * Math.pow(2, semi / 12),
+            dur: 0.16 + tier * 0.03, gain: 0.12, delay: i * 0.035,
+          });
+        });
+        this.noise({ bus: 'sfx', dur: 0.09, gain: 0.12, freq: 2400, type: 'bandpass' });
         break;
       }
-      case 'harvest-root': {
-        const { mul } = this.vary('h-root', 4);
-        this.noise({ bus: 'sfx', dur: 0.22, gain: 0.34, freq: 420 * mul });
-        this.tone({ bus: 'sfx', type: 'triangle', freq: 120 * mul, endFreq: 62, dur: 0.2, gain: 0.14 });
-        break;
-      }
-      case 'harvest-fruit': {
-        const { mul } = this.vary('h-fruit', 4);
-        this.tone({ bus: 'sfx', type: 'sine', freq: 640 * mul, endFreq: 300, dur: 0.11, gain: 0.2 });
-        this.noise({ bus: 'sfx', dur: 0.06, gain: 0.16, freq: 1700 * mul });
-        break;
-      }
-      case 'harvest-pod': {
-        const { mul } = this.vary('h-pod', 4);
-        this.noise({ bus: 'sfx', dur: 0.1, gain: 0.24, freq: 1500 * mul, type: 'bandpass' });
-        this.tone({ bus: 'sfx', type: 'triangle', freq: 330 * mul, endFreq: 210, dur: 0.1, gain: 0.12 });
-        break;
-      }
-      // สติงเกอร์คุณภาพ — เสียงที่สำคัญที่สุดในเกม
-      case 'star1':
-      case 'star2':
-        this.tone({ bus: 'stinger', type: 'sine', freq: 520, dur: 0.1, gain: 0.1 });
-        break;
-      case 'star3':
-        this.tone({ bus: 'stinger', type: 'sine', freq: 660, dur: 0.12, gain: 0.14 });
-        this.tone({ bus: 'stinger', type: 'sine', freq: 880, dur: 0.14, gain: 0.1, delay: 0.06 });
-        break;
-      case 'star4':
+      case 'discover':
         this.duck();
-        [660, 880, 1100].forEach((f, i) =>
-          this.tone({ bus: 'stinger', type: 'sine', freq: f, dur: 0.18, gain: 0.14, delay: i * 0.06 }),
+        [523, 659, 784, 1047].forEach((f, i) =>
+          this.tone({ bus: 'stinger', type: 'sine', freq: f, dur: 0.34, gain: 0.16, delay: i * 0.075 }),
+        );
+        this.tone({ bus: 'stinger', type: 'triangle', freq: 1568, dur: 0.8, gain: 0.09, delay: 0.3 });
+        break;
+      case 'deliver':
+        this.duck();
+        [587, 740, 880].forEach((f, i) =>
+          this.tone({ bus: 'stinger', type: 'triangle', freq: f, dur: 0.26, gain: 0.14, delay: i * 0.07 }),
         );
         break;
-      case 'star5':
+      case 'levelup':
         this.duck();
-        [660, 880, 1100, 1320].forEach((f, i) =>
-          this.tone({ bus: 'stinger', type: 'sine', freq: f, dur: 0.3, gain: 0.16, delay: i * 0.07 }),
+        [523, 659, 784, 1047, 1319].forEach((f, i) =>
+          this.tone({ bus: 'stinger', type: 'sine', freq: f, dur: 0.3, gain: 0.14, delay: i * 0.06 }),
         );
-        this.tone({ bus: 'stinger', type: 'triangle', freq: 1760, dur: 0.7, gain: 0.09, delay: 0.28 });
         break;
       case 'coin':
         this.tone({ bus: 'ui', type: 'square', freq: 1180, dur: 0.07, gain: 0.07, filter: 3000 });
@@ -249,19 +240,6 @@ export class Audio {
       case 'error':
         // เสียงผิดพลาดต้องนุ่ม ไม่ตกใจ — จะได้ยินบ่อยมาก
         this.tone({ bus: 'ui', type: 'sine', freq: 300, endFreq: 220, dur: 0.13, gain: 0.07, filter: 900 });
-        break;
-      case 'newday':
-        this.duck();
-        [523, 659, 784].forEach((f, i) =>
-          this.tone({ bus: 'stinger', type: 'triangle', freq: f, dur: 0.4, gain: 0.11, delay: i * 0.1 }),
-        );
-        break;
-      case 'wither':
-        this.tone({ bus: 'sfx', type: 'sawtooth', freq: 260, endFreq: 90, dur: 0.4, gain: 0.09, filter: 800 });
-        break;
-      case 'fall':
-        this.noise({ bus: 'sfx', dur: 0.3, gain: 0.2, freq: 700 });
-        this.tone({ bus: 'sfx', type: 'triangle', freq: 180, endFreq: 80, dur: 0.3, gain: 0.1 });
         break;
       default:
         break;

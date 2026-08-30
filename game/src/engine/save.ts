@@ -1,60 +1,52 @@
-import { GameState, SAVE_VERSION, newGame, PLOT_COUNT, freshPlot } from '../state';
-import { CROP_IDS } from '../data/crops';
+import { CELLS, GameState, SAVE_VERSION, emptyCell } from '../state';
+import { ITEMS } from '../data/items';
 
-const KEY = 'raidee.save.v1';
+const KEY = 'raidee.merge.v2';
 
-/**
- * เซฟมีเวอร์ชันตั้งแต่วันแรก (หลักสถาปัตยกรรมข้อ 4)
- * ผู้เล่นเกมแนวนี้เซฟยาวเป็นร้อยชั่วโมง ทำเซฟพังคือจบ
- */
+/** เซฟมีเวอร์ชันตั้งแต่วันแรก ผู้เล่นเกมแนวนี้เล่นสะสมยาว ทำเซฟพังคือจบ */
 export function save(state: GameState): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    /* โหมดส่วนตัวหรือพื้นที่เต็ม — ไม่ให้เกมล้ม */
-  }
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* พื้นที่เต็มหรือโหมดส่วนตัว */ }
+}
+
+export function clearSave(): void {
+  try { localStorage.removeItem(KEY); } catch { /* ไม่เป็นไร */ }
 }
 
 export function load(): GameState | null {
   let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
+  try { raw = localStorage.getItem(KEY); } catch { return null; }
   if (!raw) return null;
   try {
     const data = JSON.parse(raw) as Partial<GameState>;
+    if (!Array.isArray(data.cells) || data.cells.length !== CELLS) return null;
     return migrate(data);
   } catch {
     return null;
   }
 }
 
-export function clearSave(): void {
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    /* ไม่เป็นไร */
-  }
-}
-
-/** เติมช่องที่ขาดจากเซฟเก่าให้ครบ แทนที่จะโยนเซฟทิ้ง */
 function migrate(data: Partial<GameState>): GameState {
-  const base = newGame(data.seed ?? (Date.now() >>> 0));
-  const s: GameState = { ...base, ...data, version: SAVE_VERSION };
-
-  if (!Array.isArray(s.plots) || s.plots.length !== PLOT_COUNT) {
-    s.plots = Array.from({ length: PLOT_COUNT }, freshPlot);
-  } else {
-    s.plots = s.plots.map((p) => ({ ...freshPlot(), ...p }));
-  }
-  s.seeds = { ...base.seeds, ...(data.seeds ?? {}) };
-  for (const id of CROP_IDS) if (typeof s.seeds[id] !== 'number') s.seeds[id] = 0;
-  s.storage = Array.isArray(s.storage) ? s.storage : [];
-  s.soldToday = s.soldToday ?? {};
-  s.stats = { ...base.stats, ...(data.stats ?? {}) };
-  s.effect = s.effect ?? {};
-  s.cardChoices = Array.isArray(s.cardChoices) ? s.cardChoices : [];
+  const s: GameState = {
+    version: SAVE_VERSION,
+    seed: data.seed ?? (Date.now() >>> 0),
+    cells: (data.cells ?? []).map((c) => {
+      // ทิ้งไอเทมที่ไม่รู้จักแทนที่จะให้เกมพังตอนวาด
+      if (!c || typeof c !== 'object') return emptyCell();
+      if (c.itemId && !ITEMS[c.itemId]) return emptyCell();
+      return { ...c, bornAt: undefined };
+    }),
+    coins: data.coins ?? 0,
+    xp: data.xp ?? 0,
+    level: data.level ?? 1,
+    energy: data.energy ?? 30,
+    energyMax: data.energyMax ?? 30,
+    energyAt: data.energyAt ?? Date.now(),
+    orders: Array.isArray(data.orders) ? data.orders : [],
+    orderSeq: data.orderSeq ?? 0,
+    discovered: Array.isArray(data.discovered) ? data.discovered : [],
+    stats: { merges: 0, cleared: 0, delivered: 0, bestTier: 0, ...(data.stats ?? {}) },
+  };
+  // เวลาที่หายไปตอนปิดเกมไม่ควรทำให้ได้พลังงานย้อนหลังเกินเพดาน
+  if (s.energyAt > Date.now()) s.energyAt = Date.now();
   return s;
 }

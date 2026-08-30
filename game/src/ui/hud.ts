@@ -1,206 +1,100 @@
-import { CROPS, CROP_IDS, STAR_LABEL } from '../data/crops';
-import { CARDS } from '../data/cards';
-import { GameState, Tool } from '../state';
-import { STAMINA_COST, priceStorage } from '../systems/farm';
-import type { DayReport } from '../systems/day';
+import { ITEMS } from '../data/items';
+import { GameState, XP_PER_LEVEL } from '../state';
+import { canDeliver, countOnBoard } from '../systems/orders';
+import { energyPrice, secondsToNext } from '../systems/energy';
+import { drawItem } from '../render/items';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-/** ไอคอนวาดเป็น SVG แทนอิโมจิ เพราะอิโมจิหน้าตาต่างกันทุกระบบและคุมสไตล์ไม่ได้ */
-const ICON: Record<Tool, string> = {
-  hoe: '<path d="M3 17l6-6M9 11l3-3M12 8l4-4 4 4-4 4-4-4z"/>',
-  seed: '<path d="M12 20V9M12 9c0-3 2-5 6-5 0 4-2 6-6 6zM12 12c0-2.6-1.8-4.5-5-4.5C7 11 9 13 12 13z"/>',
-  water: '<path d="M12 3s6 6.6 6 10.4A6 6 0 1 1 6 13.4C6 9.6 12 3 12 3z"/>',
-  harvest: '<path d="M4 10h16l-1.6 9.2a1.6 1.6 0 0 1-1.6 1.3H7.2a1.6 1.6 0 0 1-1.6-1.3L4 10zM8.5 10 11 3M15.5 10 13 3"/>',
-  stake: '<path d="M9 21V5M9 5 6.5 2M9 9l6-2M9 14l6-2"/>',
-};
+/** วาดไอคอนไอเทมลงแคนวาสเล็กสำหรับใช้ในยูไอ ใช้ศิลป์ชุดเดียวกับบนกระดาน */
+const iconCache = new Map<string, string>();
+export function itemIcon(itemId: string, size = 34): string {
+  const key = `${itemId}@${size}`;
+  const hit = iconCache.get(key);
+  if (hit) return hit;
+  const c = document.createElement('canvas');
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  c.width = size * dpr;
+  c.height = size * dpr;
+  const ctx = c.getContext('2d')!;
+  ctx.scale(dpr, dpr);
+  ctx.translate(size / 2, size / 2);
+  const s = size / 52;
+  ctx.scale(s, s);
+  drawItem(ctx, itemId, 0);
+  const url = c.toDataURL();
+  iconCache.set(key, url);
+  return url;
+}
 
-const svg = (tool: Tool): string =>
-  `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[tool]}</svg>`;
+export function renderTop(state: GameState, now: number): void {
+  $('stat-coins').textContent = state.coins.toLocaleString('th-TH');
+  $('stat-level').textContent = String(state.level);
+  $('stat-energy').textContent = `${state.energy}/${state.energyMax}`;
 
-export const TOOLS: { id: Tool; label: string; key: string }[] = [
-  { id: 'hoe', label: 'พรวนดิน', key: '1' },
-  { id: 'seed', label: 'ปลูก', key: '2' },
-  { id: 'water', label: 'รดน้ำ', key: '3' },
-  { id: 'harvest', label: 'เก็บเกี่ยว', key: '4' },
-  { id: 'stake', label: 'ปักค้าง', key: '5' },
-];
+  const ePct = state.energy / state.energyMax;
+  const eFill = $<HTMLElement>('energy-fill');
+  eFill.style.width = `${ePct * 100}%`;
+  eFill.classList.toggle('low', ePct < 0.2);
 
-export function buildToolbar(state: GameState, onPick: (t: Tool) => void): void {
-  const el = $('tools');
+  const secs = secondsToNext(state, now);
+  $('energy-timer').textContent = state.energy >= state.energyMax ? 'เต็ม' : `+1 ใน ${secs} วิ`;
+
+  const need = XP_PER_LEVEL(state.level);
+  $<HTMLElement>('xp-fill').style.width = `${Math.min(100, (state.xp / need) * 100)}%`;
+  $('stat-xp').textContent = `${state.xp}/${need}`;
+
+  const buy = $<HTMLButtonElement>('btn-energy');
+  const price = energyPrice(state);
+  buy.textContent = `เติมพลังงาน ${price}`;
+  buy.disabled = state.coins < price || state.energy >= state.energyMax;
+}
+
+export function renderOrders(state: GameState, onDeliver: (id: string) => void): void {
+  const el = $('orders');
   el.innerHTML = '';
-  for (const t of TOOLS) {
-    const b = document.createElement('button');
-    b.className = 'tool';
-    b.dataset.tool = t.id;
-    b.innerHTML = `${svg(t.id)}<span class="lbl">${t.label}</span>
-      <kbd>${t.key}</kbd><span class="cost">−${STAMINA_COST[t.id]}</span>`;
-    b.addEventListener('click', () => onPick(t.id));
-    el.appendChild(b);
-  }
-  syncToolbar(state);
-}
-
-export function syncToolbar(state: GameState): void {
-  for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>('.tool'))) {
-    b.classList.toggle('on', b.dataset.tool === state.tool);
-  }
-}
-
-export function buildSeedList(
-  state: GameState,
-  onSelect: (id: string) => void,
-  onBuy: (id: string) => void,
-): void {
-  const el = $('seedlist');
-  el.innerHTML = '';
-  for (const id of CROP_IDS) {
-    const crop = CROPS[id];
-    const row = document.createElement('div');
-    row.className = 'seed' + (state.selectedSeed === id ? ' on' : '');
-    row.innerHTML = `<button class="nm" style="all:unset;cursor:pointer">${crop.name}</button>
-      <span class="n">×${state.seeds[id] ?? 0}</span>`;
-    row.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).classList.contains('buy')) return;
-      onSelect(id);
-    });
-    const buy = document.createElement('button');
-    buy.className = 'buy';
-    buy.textContent = `ซื้อ ${crop.seedCost}`;
-    buy.disabled = state.money < crop.seedCost;
-    buy.addEventListener('click', (e) => { e.stopPropagation(); onBuy(id); });
-    row.appendChild(buy);
-    el.appendChild(row);
+  for (const order of state.orders) {
+    const ready = canDeliver(state, order);
+    const card = document.createElement('div');
+    card.className = 'order' + (ready ? ' ready' : '');
+    card.innerHTML = `
+      <div class="who">${order.npc}</div>
+      <div class="wants">${order.want.map((w) => {
+        const have = countOnBoard(state, w.itemId);
+        const ok = have >= w.n;
+        return `<span class="want ${ok ? 'ok' : ''}" title="${ITEMS[w.itemId].name}">
+          <img src="${itemIcon(w.itemId, 30)}" alt="${ITEMS[w.itemId].name}" width="30" height="30">
+          <b>${Math.min(have, w.n)}/${w.n}</b></span>`;
+      }).join('')}</div>
+      <div class="reward"><span class="c">+${order.coins}</span><span class="x">+${order.xp} xp</span></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'deliver' + (ready ? ' primary' : '');
+    btn.textContent = ready ? 'ส่งของ' : 'ยังไม่ครบ';
+    btn.disabled = !ready;
+    btn.addEventListener('click', () => onDeliver(order.id));
+    card.appendChild(btn);
+    el.appendChild(card);
   }
 }
 
-export function renderTop(state: GameState, combo: number): void {
-  $('stat-day').textContent = String(state.day);
-  $('stat-money').textContent = state.money.toLocaleString('th-TH');
-  $('stat-stamina').textContent = `${Math.max(0, Math.round(state.stamina))}/${state.staminaMax}`;
-  const pct = Math.max(0, state.stamina / state.staminaMax);
-  const fill = $<HTMLElement>('stamina-fill');
-  fill.style.width = `${pct * 100}%`;
-  fill.classList.toggle('low', pct < 0.15);
-
-  const box = $('combo');
-  if (combo >= 3) {
-    box.hidden = false;
-    $('combo-val').textContent = `×${combo} · −${Math.round(comboDiscount(combo) * 100)}%`;
-  } else {
-    box.hidden = true;
-  }
-}
-
-/** คอมโบการทำงาน — ทำงานชนิดเดียวกันต่อเนื่อง ลด Stamina สูงสุด 25% */
-export function comboDiscount(combo: number): number {
-  if (combo < 3) return 0;
-  return Math.min(0.25, 0.1 + (combo - 3) * 0.02);
-}
-
-export function renderPlot(state: GameState, index: number | null): void {
-  const el = $('plot-info');
-  if (index === null) {
-    el.textContent = 'ชี้ที่แปลงเพื่อดูรายละเอียด';
-    return;
-  }
-  const p = state.plots[index];
-  const rows: string[] = [];
-  rows.push(row('ความอุดม', `${Math.round(p.fertility)}/100`, p.fertility < 30 ? 'bad' : ''));
-  rows.push(row('ความชื้น', `${Math.round(p.moisture)}/100`, p.moisture < 30 ? 'warn' : ''));
-
-  if (!p.crop) {
-    const last = p.history[0] ? CROPS[p.history[0]]?.name ?? '—' : '—';
-    rows.push(row('ปลูกล่าสุด', last));
-    el.innerHTML = `<div class="name">${p.tilled ? 'แปลงพรวนแล้ว ว่าง' : 'พื้นหญ้า ยังไม่พรวน'}</div>
-      ${p.history.length >= 2 && p.history[0] === p.history[1]
-        ? '<div class="verb" style="color:#ffb74d">ปลูกซ้ำชนิดเดิม คุณภาพจะลดลง ลองสลับพืช</div>' : ''}
-      ${rows.join('')}`;
-    return;
-  }
-
-  const crop = CROPS[p.crop.cropId];
-  rows.push(row('ระยะ', `${p.crop.stage}/${crop.stages}${p.crop.ready ? ' · เก็บได้' : ''}`));
-  if (crop.verb === 'stake') {
-    rows.push(row('ค้ำยัน', p.crop.staked ? 'ปักแล้ว' : p.crop.fallen ? 'ล้มแล้ว' : 'ยังไม่ปัก',
-      p.crop.fallen ? 'bad' : p.crop.staked ? '' : 'warn'));
-  }
-  if (crop.verb === 'ratoon') rows.push(row('เก็บได้อีก', `${p.crop.ratoonLeft + 1} รอบ`));
-  if (p.crop.dryDays > 0) {
-    rows.push(row('ขาดน้ำมา', `${p.crop.dryDays} วัน`, crop.verb === 'stress' ? 'warn' : 'bad'));
-  }
-
-  el.innerHTML = `<div class="name">${crop.name}</div>
-    <div class="verb">${crop.verbHint}</div>${rows.join('')}
-    <div class="row"><span>คุณภาพ</span><span>ยังไม่รู้ จนกว่าจะเก็บ</span></div>`;
-}
-
-function row(k: string, v: string, cls = ''): string {
-  return `<div class="row"><span>${k}</span><span class="${cls}">${v}</span></div>`;
-}
-
-export function renderStorage(state: GameState): void {
-  const el = $('storage');
-  const btn = $<HTMLButtonElement>('btn-sell');
-  if (state.storage.length === 0) {
-    el.textContent = 'ยังไม่มีผลผลิต';
-    btn.disabled = true;
-    btn.textContent = 'ขายทั้งหมด';
-    return;
-  }
-  const { lines, total } = priceStorage(state);
-  el.innerHTML = state.storage
-    .map((it, i) => `<div class="line"><span class="nm">${CROPS[it.cropId].name} ×${it.n}</span>
-      <span class="st">${'★'.repeat(it.stars)}</span><span class="pr">${lines[i]}</span></div>`)
-    .join('');
-  btn.disabled = false;
-  btn.textContent = `ขายทั้งหมด · ${total.toLocaleString('th-TH')}`;
-}
-
-export function showCards(
-  state: GameState,
-  onPick: (cardId: string) => void,
-  report: DayReport | null,
-): void {
-  const overlay = $('overlay');
-  const modal = $('modal');
-  const choices = state.cardChoices
-    .map((id) => CARDS.find((c) => c.id === id))
-    .filter((c): c is (typeof CARDS)[number] => Boolean(c));
-
-  const reportHtml = report
-    ? `<div class="report">
-        <div><div class="k">พืชที่โตขึ้น</div><div class="v good">${report.grown}</div></div>
-        <div><div class="k">ต้นที่เหี่ยวตาย</div><div class="v ${report.withered ? 'bad' : ''}">${report.withered}</div></div>
-        <div><div class="k">ต้นล้มเพราะไม่ได้ค้ำ</div><div class="v ${report.fallen ? 'bad' : ''}">${report.fallen}</div></div>
-        <div><div class="k">พริกที่ได้เครียด</div><div class="v good">${report.stressed}</div></div>
-      </div>`
-    : '';
-
-  modal.innerHTML = `<h2>เช้าวันที่ ${state.day}</h2>
-    <p class="sub">เลือกหนึ่งอย่างสำหรับวันนี้ — ทุกวันเริ่มด้วยการตัดสินใจ ไม่ใช่เริ่มด้วยงานบ้าน</p>
-    ${reportHtml}
-    <div class="cards">
-      ${choices.map((c) => `<button class="card" data-card="${c.id}">
-        <span class="ico">${c.icon}</span><span class="t">${c.title}</span><span class="d">${c.desc}</span>
-      </button>`).join('')}
-    </div>`;
-
-  for (const b of Array.from(modal.querySelectorAll<HTMLButtonElement>('[data-card]'))) {
-    b.addEventListener('click', () => onPick(b.dataset.card!));
-  }
-  overlay.hidden = false;
-}
-
-export function hideModal(): void {
-  $('overlay').hidden = true;
+export function renderCodex(state: GameState): void {
+  const el = $('codex');
+  const found = state.discovered.length;
+  el.innerHTML = `<div class="codexline">ค้นพบแล้ว <b>${found}</b> ชนิด ·
+    รวมร่างไป <b>${state.stats.merges}</b> ครั้ง · ถางที่ <b>${state.stats.cleared}</b> จุด</div>
+    <div class="chips">${state.discovered.slice(-10).reverse().map((id) =>
+      `<img class="chip" src="${itemIcon(id, 28)}" title="${ITEMS[id]?.name ?? id}" alt="${ITEMS[id]?.name ?? id}" width="28" height="28">`,
+    ).join('')}</div>`;
 }
 
 export function setHint(text: string): void {
   $('hint').textContent = text;
 }
 
-export function starLabel(stars: number): string {
-  return STAR_LABEL[stars];
+export function toast(text: string): void {
+  const el = $('toast');
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
 }
