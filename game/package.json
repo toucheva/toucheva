@@ -9,7 +9,8 @@
     "build": "tsc --noEmit -p tsconfig.node.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json",
-    "sim": "esbuild tools/sim.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/sim.mjs --log-level=warning && node node_modules/.cache/sim.mjs"
+    "sim": "esbuild tools/sim.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/sim.mjs --log-level=warning && node node_modules/.cache/sim.mjs",
+    "bundle": "npm run build && node tools/bundle-single.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
