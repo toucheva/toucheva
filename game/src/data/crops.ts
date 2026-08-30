@@ -59,7 +59,7 @@ export const CROPS: Record<string, Crop> = {
     id: 'bean', name: 'ถั่วฝักยาว', verb: 'fixNitrogen',
     verbHint: 'เก็บเกี่ยวแล้วคืนความอุดมให้ช่องรอบข้าง +12 — พืชฟื้นดิน',
     stages: 3, daysPerStage: 2, basePrice: 85, seedCost: 40, drain: -6,
-    leaf: '#43a047', fruit: '#7cb342', family: 'pod',
+    leaf: '#3d8b41', fruit: '#c3dc72', family: 'pod',
   },
 };
 

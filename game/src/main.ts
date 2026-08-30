@@ -4,14 +4,29 @@ import { load, save, clearSave } from './engine/save';
 import { act, priceStorage } from './systems/farm';
 import { endDay, rollCards, applyCard, DayReport } from './systems/day';
 import { Juice } from './render/juice';
-import { draw, tileAt, tileCenter, BOARD } from './render/board';
+import { draw, tileAt, tileCenter, invalidateGround, BOARD } from './render/board';
 import { audio } from './audio/audio';
 import * as hud from './ui/hud';
 
 const canvas = document.getElementById('board') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
-canvas.width = BOARD;
-canvas.height = BOARD;
+
+/**
+ * เรนเดอร์ตามความละเอียดจริงของจอ ไม่งั้นบนจอ retina ภาพจะเบลอ
+ * พิกัดในโค้ดยังเป็นหน่วยตรรกะ (BOARD) เหมือนเดิม
+ */
+let dpr = 1;
+function resizeCanvas(): void {
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(BOARD * dpr);
+  canvas.height = Math.round(BOARD * dpr);
+  canvas.style.width = `${BOARD}px`;
+  canvas.style.height = `${BOARD}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  invalidateGround();
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
 let state: GameState = load() ?? newGame();
 if (state.cardChoices.length === 0) state.cardChoices = rollCards(state).map((c) => c.id);
@@ -62,24 +77,25 @@ function doAction(index: number): void {
   switch (out.kind) {
     case 'till':
       audio.play('till');
-      juice.burst(x, y, '#6d4c41', 7, { spread: 70 });
+      juice.burst(x, y, '#7a5a3e', 9, { spread: 78, shape: 'clod', size: 2.6 });
       juice.addShake(2.2);
       juice.pop(index, 0.8);
       juice.float(x, y - 6, `−${spent}`, '#c5b8a5', 12);
       break;
     case 'plant':
       audio.play('plant');
-      juice.burst(x, y + 6, CROPS[out.cropId].leaf, 5, { spread: 45, gravity: 180 });
+      juice.burst(x, y + 6, CROPS[out.cropId].leaf, 6, { spread: 48, gravity: 170, shape: 'leaf', size: 1.9 });
       juice.pop(index, 1.3);
       break;
     case 'water':
       audio.play('water');
-      juice.burst(x, y - 4, '#64b5f6', 9, { spread: 60, gravity: 420, size: 2 });
+      juice.burst(x, y - 6, '#7cc4f0', 11, { spread: 66, gravity: 430, shape: 'drop', size: 1.7 });
+      juice.ring(x, y + 4, '#9ad4f5');
       juice.pop(index, 0.5);
       break;
     case 'stake':
       audio.play('stake');
-      juice.burst(x, y, '#a1887f', 4, { spread: 40 });
+      juice.burst(x, y, '#8a6a4c', 5, { spread: 42, shape: 'clod', size: 1.9 });
       juice.pop(index, 0.7);
       hud.setHint('ปักค้างแล้ว มะเขือเทศต้นนี้จะไม่ล้ม');
       break;
@@ -102,14 +118,19 @@ function onHarvest(
   const colors = ['', '#bdbdbd', '#a5d6a7', '#81d4fa', '#ce93d8', '#ffd54f'];
   const color = colors[stars];
 
-  juice.burst(x, y, crop.fruit, 6 + stars * 3, { spread: 60 + stars * 20 });
+  juice.burst(x, y, crop.fruit, 6 + stars * 3, {
+    spread: 60 + stars * 20,
+    shape: crop.family === 'leaf' ? 'leaf' : 'clod',
+    size: 2.2,
+  });
+  juice.ring(x, y + 6, crop.fruit);
   juice.pop(index, 1 + stars * 0.2);
 
   // ผัก 5 ดาวได้หยุดเวลา 40 ms — จังหวะที่ทำให้อยากได้อีก
   if (stars === 5) {
     juice.stop(0.04);
     juice.addShake(3.5);
-    juice.burst(x, y, '#ffd54f', 16, { spread: 130, gravity: 200 });
+    juice.burst(x, y, '#ffd970', 18, { spread: 120, gravity: 120, shape: 'spark', size: 2.4, life: 0.9 });
   } else if (stars === 4) {
     juice.addShake(1.5);
   }
@@ -179,8 +200,8 @@ function openMorning(report: DayReport | null): void {
 function canvasPos(e: PointerEvent): { x: number; y: number } {
   const r = canvas.getBoundingClientRect();
   return {
-    x: ((e.clientX - r.left) / r.width) * canvas.width,
-    y: ((e.clientY - r.top) / r.height) * canvas.height,
+    x: ((e.clientX - r.left) / r.width) * BOARD,
+    y: ((e.clientY - r.top) / r.height) * BOARD,
   };
 }
 
@@ -255,6 +276,7 @@ document.getElementById('btn-reset')!.addEventListener('click', () => {
 // ---------- ลูปหลัก ----------
 
 function refresh(): void {
+  invalidateGround();
   hud.renderTop(state, comboTool === state.tool ? combo : 0);
   hud.buildSeedList(state, (id) => {
     state.selectedSeed = id;
@@ -300,8 +322,8 @@ function frame(now: number): void {
   }
 
   juice.update(dt);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  draw(ctx, state, juice, hover, now / 1000);
+  ctx.clearRect(0, 0, BOARD, BOARD);
+  draw(ctx, state, juice, hover, now / 1000, dpr);
   requestAnimationFrame(frame);
 }
 

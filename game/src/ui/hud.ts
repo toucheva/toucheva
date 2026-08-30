@@ -6,12 +6,25 @@ import type { DayReport } from '../systems/day';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-export const TOOLS: { id: Tool; label: string; icon: string; key: string }[] = [
-  { id: 'hoe', label: 'พรวนดิน', icon: '⛏', key: '1' },
-  { id: 'seed', label: 'ปลูก', icon: '🌱', key: '2' },
-  { id: 'water', label: 'รดน้ำ', icon: '💧', key: '3' },
-  { id: 'harvest', label: 'เก็บเกี่ยว', icon: '🧺', key: '4' },
-  { id: 'stake', label: 'ปักค้าง', icon: '🪵', key: '5' },
+/** ไอคอนวาดเป็น SVG แทนอิโมจิ เพราะอิโมจิหน้าตาต่างกันทุกระบบและคุมสไตล์ไม่ได้ */
+const ICON: Record<Tool, string> = {
+  hoe: '<path d="M3 17l6-6M9 11l3-3M12 8l4-4 4 4-4 4-4-4z"/>',
+  seed: '<path d="M12 20V9M12 9c0-3 2-5 6-5 0 4-2 6-6 6zM12 12c0-2.6-1.8-4.5-5-4.5C7 11 9 13 12 13z"/>',
+  water: '<path d="M12 3s6 6.6 6 10.4A6 6 0 1 1 6 13.4C6 9.6 12 3 12 3z"/>',
+  harvest: '<path d="M4 10h16l-1.6 9.2a1.6 1.6 0 0 1-1.6 1.3H7.2a1.6 1.6 0 0 1-1.6-1.3L4 10zM8.5 10 11 3M15.5 10 13 3"/>',
+  stake: '<path d="M9 21V5M9 5 6.5 2M9 9l6-2M9 14l6-2"/>',
+};
+
+const svg = (tool: Tool): string =>
+  `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[tool]}</svg>`;
+
+export const TOOLS: { id: Tool; label: string; key: string }[] = [
+  { id: 'hoe', label: 'พรวนดิน', key: '1' },
+  { id: 'seed', label: 'ปลูก', key: '2' },
+  { id: 'water', label: 'รดน้ำ', key: '3' },
+  { id: 'harvest', label: 'เก็บเกี่ยว', key: '4' },
+  { id: 'stake', label: 'ปักค้าง', key: '5' },
 ];
 
 export function buildToolbar(state: GameState, onPick: (t: Tool) => void): void {
@@ -21,7 +34,7 @@ export function buildToolbar(state: GameState, onPick: (t: Tool) => void): void 
     const b = document.createElement('button');
     b.className = 'tool';
     b.dataset.tool = t.id;
-    b.innerHTML = `<span class="ico">${t.icon}</span><span>${t.label}</span>
+    b.innerHTML = `${svg(t.id)}<span class="lbl">${t.label}</span>
       <kbd>${t.key}</kbd><span class="cost">−${STAMINA_COST[t.id]}</span>`;
     b.addEventListener('click', () => onPick(t.id));
     el.appendChild(b);
