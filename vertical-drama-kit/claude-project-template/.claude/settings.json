@@ -1,0 +1,19 @@
+{
+  "model": "sonnet",
+  "permissions": {
+    "allow": [
+      "Bash(python scripts/*)",
+      "Bash(ls *)",
+      "Bash(ffmpeg *)",
+      "Bash(ffprobe *)",
+      "Read(episodes/**)",
+      "Read(characters/**/bible.md)",
+      "Edit(episodes/**)"
+    ],
+    "deny": [
+      "Read(models/**)",
+      "Read(**/*.safetensors)",
+      "Bash(rm -rf *)"
+    ]
+  }
+}

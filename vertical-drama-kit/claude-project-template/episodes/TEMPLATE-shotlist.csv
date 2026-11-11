@@ -1,0 +1,3 @@
+shot,duration_sec,type,character,outfit,camera,scene,action_emotion,dialogue_th,keyframe,audio,clip,status
+s01,3,action,mali,A,close-up,office night,slaps desk in anger,,shots/ep01/s01.png,,clips/ep01/s01.mp4,todo
+s02,4,talk,mali,A,medium,office night,cold stare,"คุณคิดว่าฉันไม่รู้เหรอ",shots/ep01/s02.png,audio/ep01/s02.wav,clips/ep01/s02.mp4,todo
